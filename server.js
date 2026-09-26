@@ -4,7 +4,8 @@ const express = require('express');
 const { Server } = require('socket.io');
 
 const PORT = process.env.PORT || 3000;
-const ADMIN_KEY = process.env.ADMIN_KEY || 'lamphun';
+const ADMIN_KEY = (process.env.ADMIN_KEY || 'lamphun').trim();
+const isAdmin = (key) => String(key || '').trim() === ADMIN_KEY;
 const MAX_VOTERS = Number(process.env.MAX_VOTERS || 171);
 const DURATION_MS = Number(process.env.DURATION_SEC || 300) * 1000;
 
@@ -82,7 +83,7 @@ io.on('connection', (socket) => {
 
   socket.on('admin:start', (key, ack) => {
     const reply = typeof ack === 'function' ? ack : () => {};
-    if (key !== ADMIN_KEY) return reply({ ok: false, error: 'รหัสผู้ดูแลไม่ถูกต้อง' });
+    if (!isAdmin(key)) return reply({ ok: false, error: 'รหัสผู้ดูแลไม่ถูกต้อง' });
     if (state.status !== 'waiting') return reply({ ok: false, error: 'เริ่มไปแล้ว — กดรีเซ็ตก่อน' });
     state.status = 'open';
     state.endsAt = Date.now() + DURATION_MS;
@@ -93,14 +94,14 @@ io.on('connection', (socket) => {
 
   socket.on('admin:stop', (key, ack) => {
     const reply = typeof ack === 'function' ? ack : () => {};
-    if (key !== ADMIN_KEY) return reply({ ok: false, error: 'รหัสผู้ดูแลไม่ถูกต้อง' });
+    if (!isAdmin(key)) return reply({ ok: false, error: 'รหัสผู้ดูแลไม่ถูกต้อง' });
     close('manual');
     reply({ ok: true });
   });
 
   socket.on('admin:reset', (key, ack) => {
     const reply = typeof ack === 'function' ? ack : () => {};
-    if (key !== ADMIN_KEY) return reply({ ok: false, error: 'รหัสผู้ดูแลไม่ถูกต้อง' });
+    if (!isAdmin(key)) return reply({ ok: false, error: 'รหัสผู้ดูแลไม่ถูกต้อง' });
     reset();
     io.emit('reset');
     broadcast();
