@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>ควบคุมโหวต · ฟังเสียงลำพูน</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="kicker">ฟังเสียงลำพูน</div>
+      <h1>ไว้วางใจไปกันต่อ หรือ พอแค่นี้<span class="name">กับ “นิติกร”</span></h1>
+    </header>
+
+    <section class="card timer">
+      <span id="badge" class="badge waiting">กำลังเชื่อมต่อ…</span>
+      <div id="clock" class="clock">05:00</div>
+      <div class="count">โหวตแล้ว <b id="total">0</b> / <span id="max">171</span> คน</div>
+    </section>
+
+    <section class="card results">
+      <h2>ผลโหวตสด</h2>
+      <div class="row trust">
+        <div class="top"><span class="name">ไว้วางใจไปกันต่อ</span><span class="num"><b id="n-trust">0</b> เสียง · <span id="p-trust">0%</span></span></div>
+        <div class="bar"><span id="bar-trust"></span></div>
+      </div>
+      <div class="row stop">
+        <div class="top"><span class="name">พอแค่นี้</span><span class="num"><b id="n-stop">0</b> เสียง · <span id="p-stop">0%</span></span></div>
+        <div class="bar"><span id="bar-stop"></span></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="admin-actions">
+        <button id="start" class="btn start">▶ Start (5 นาที)</button>
+        <button id="stop" class="btn stop">■ ปิดโหวตทันที</button>
+        <button id="reset" class="btn reset">↺ รีเซ็ต</button>
+      </div>
+      <p id="hint" class="hint"></p>
+      <p class="link">ลิงก์สำหรับผู้โหวต: <a id="voteLink" target="_blank"></a></p>
+    </section>
+  </div>
+
+  <div id="modal" class="modal" hidden>
+    <form id="keyForm" class="modal-box">
+      <h3 id="modalTitle">ใส่รหัสผู้ดูแล</h3>
+      <input id="key" class="key" type="password" placeholder="รหัสผู้ดูแล" autocomplete="current-password" autocapitalize="off" autocorrect="off" spellcheck="false" required>
+      <p id="modalErr" class="hint err"></p>
+      <div class="admin-actions">
+        <button type="submit" class="btn start" id="modalOk">ยืนยัน</button>
+        <button type="button" class="btn reset" id="modalCancel">ยกเลิก</button>
+      </div>
+    </form>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/common.js"></script>
+  <script>
+    const socket = io();
+    const keyInput = document.getElementById('key');
+    const hint = document.getElementById('hint');
+    const modal = document.getElementById('modal');
+    const modalErr = document.getElementById('modalErr');
+    const btn = { start: document.getElementById('start'), stop: document.getElementById('stop'), reset: document.getElementById('reset') };
+    let pending = null;
+
+    const voteUrl = location.origin + '/';
+    const a = document.getElementById('voteLink');
+    a.href = voteUrl; a.textContent = voteUrl;
+
+    function setHint(text, cls = '') { hint.textContent = text; hint.className = 'hint ' + cls; }
+
+    // Every admin action: press the button -> popup asks for the admin password -> confirm.
+    function askKey(title, evt, okMsg) {
+      pending = { evt, okMsg };
+      document.getElementById('modalTitle').textContent = title;
+      keyInput.value = '';
+      modalErr.textContent = '';
+      modal.hidden = false;
+      keyInput.focus();
+    }
+    function closeModal() { modal.hidden = true; pending = null; }
+
+    document.getElementById('keyForm').addEventListener('submit', e => {
+      e.preventDefault();
+      if (!pending) return;
+      const { evt, okMsg } = pending;
+      socket.emit(evt, keyInput.value, res => {
+        if (res.ok) { closeModal(); setHint(okMsg, 'ok'); }
+        else { modalErr.textContent = res.error; keyInput.select(); }
+      });
+    });
+    document.getElementById('modalCancel').onclick = closeModal;
+    modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && !modal.hidden) closeModal(); });
+
+    btn.start.onclick = () => askKey('ใส่รหัสผู้ดูแลเพื่อเริ่มโหวต (5 นาที)', 'admin:start', 'เริ่มโหวตแล้ว!');
+    btn.stop.onclick = () => askKey('ใส่รหัสผู้ดูแลเพื่อปิดโหวตทันที', 'admin:stop', 'ปิดโหวตแล้ว');
+    btn.reset.onclick = () => askKey('ใส่รหัสผู้ดูแลเพื่อล้างผลโหวตทั้งหมด', 'admin:reset', 'รีเซ็ตแล้ว พร้อมเริ่มใหม่');
+
+    socket.on('state', s => {
+      renderState(s);
+      btn.start.disabled = s.status !== 'waiting';
+      btn.stop.disabled = s.status !== 'open';
+    });
+  </script>
+</body>
+</html>

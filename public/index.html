@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>ฟังเสียงลำพูน</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="kicker">ฟังเสียงลำพูน</div>
+      <h1>ไว้วางใจไปกันต่อ หรือ พอแค่นี้<span class="name">กับ “นิติกร”</span></h1>
+    </header>
+
+    <section class="card timer">
+      <span id="badge" class="badge waiting">กำลังเชื่อมต่อ…</span>
+      <div id="clock" class="clock">05:00</div>
+      <div class="count">โหวตแล้ว <b id="total">0</b> / <span id="max">171</span> คน</div>
+    </section>
+
+    <section class="card">
+      <div class="choices">
+        <button class="choice trust" data-choice="trust" disabled>
+          <span class="icon">👍</span>ไว้วางใจไปกันต่อ
+        </button>
+        <button class="choice stop" data-choice="stop" disabled>
+          <span class="icon">✋</span>พอแค่นี้
+        </button>
+      </div>
+      <p id="hint" class="hint">เลือกได้ 1 ข้อเท่านั้น</p>
+    </section>
+
+    <section class="card results">
+      <h2>ผลโหวตสด</h2>
+      <div class="row trust">
+        <div class="top"><span class="name">ไว้วางใจไปกันต่อ</span><span class="num"><b id="n-trust">0</b> เสียง · <span id="p-trust">0%</span></span></div>
+        <div class="bar"><span id="bar-trust"></span></div>
+      </div>
+      <div class="row stop">
+        <div class="top"><span class="name">พอแค่นี้</span><span class="num"><b id="n-stop">0</b> เสียง · <span id="p-stop">0%</span></span></div>
+        <div class="bar"><span id="bar-stop"></span></div>
+      </div>
+    </section>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/common.js"></script>
+  <script>
+    const socket = io();
+    const buttons = document.querySelectorAll('.choice');
+    const hint = document.getElementById('hint');
+
+    function store(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} }
+    function load(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+
+    let voterId = load('voterId');
+    if (!voterId) {
+      voterId = (crypto.randomUUID ? crypto.randomUUID() : Date.now() + '-' + Math.random().toString(36).slice(2));
+      store('voterId', voterId);
+    }
+    let myChoice = load('myChoice');
+    let sending = false;
+
+    function setHint(text, cls = '') { hint.textContent = text; hint.className = 'hint ' + cls; }
+
+    function updateButtons() {
+      const s = current;
+      const canVote = s && s.status === 'open' && !myChoice && !sending;
+      buttons.forEach(b => {
+        b.disabled = !canVote;
+        b.classList.toggle('picked', b.dataset.choice === myChoice);
+      });
+      if (myChoice) setHint(`คุณเลือก “${LABELS[myChoice]}” แล้ว ขอบคุณครับ`, 'ok');
+      else if (!s || s.status === 'waiting') setHint('รอผู้ดูแลกดเริ่มโหวต…');
+      else if (s.status === 'closed') setHint('ปิดโหวตแล้ว');
+      else setHint('เลือกได้ 1 ข้อเท่านั้น');
+    }
+
+    buttons.forEach(b => b.addEventListener('click', () => {
+      if (myChoice || sending) return;
+      sending = true; updateButtons();
+      socket.emit('vote', { voterId, choice: b.dataset.choice }, res => {
+        sending = false;
+        if (res.ok) { myChoice = res.choice; store('myChoice', myChoice); updateButtons(); }
+        else { updateButtons(); setHint(res.error, 'err'); }
+      });
+    }));
+
+    socket.on('state', s => { renderState(s); updateButtons(); });
+    socket.on('reset', () => { myChoice = null; store('myChoice', null); updateButtons(); });
+    socket.on('connect', () => {
+      // Sync local memory with the server (e.g. after a server restart or reset).
+      socket.emit('checkVoted', voterId, voted => {
+        if (!voted && myChoice) { myChoice = null; store('myChoice', null); }
+        updateButtons();
+      });
+    });
+    socket.on('disconnect', () => setHint('การเชื่อมต่อหลุด กำลังเชื่อมต่อใหม่…', 'err'));
+  </script>
+</body>
+</html>
