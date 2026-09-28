@@ -18,7 +18,7 @@
 
     <section class="card timer">
       <span id="badge" class="badge waiting">กำลังเชื่อมต่อ…</span>
-      <div id="clock" class="clock">05:00</div>
+      <div id="clock" class="clock">--:--</div>
       <div class="count">โหวตแล้ว <b id="total">0</b> / <span id="max">171</span> คน</div>
     </section>
 
@@ -36,7 +36,7 @@
 
     <section class="card">
       <div class="admin-actions">
-        <button id="start" class="btn start">▶ Start (5 นาที)</button>
+        <button id="start" class="btn start">▶ Start</button>
         <button id="stop" class="btn stop">■ ปิดโหวตทันที</button>
         <button id="reset" class="btn reset">↺ รีเซ็ต</button>
       </div>
@@ -98,12 +98,13 @@
     modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && !modal.hidden) closeModal(); });
 
-    btn.start.onclick = () => askKey('ใส่รหัสผู้ดูแลเพื่อเริ่มโหวต (5 นาที)', 'admin:start', 'เริ่มโหวตแล้ว!');
+    btn.start.onclick = () => askKey(`ใส่รหัสผู้ดูแลเพื่อเริ่มโหวต${current ? ` (${durationText(current.durationMs)})` : ''}`, 'admin:start', 'เริ่มโหวตแล้ว!');
     btn.stop.onclick = () => askKey('ใส่รหัสผู้ดูแลเพื่อปิดโหวตทันที', 'admin:stop', 'ปิดโหวตแล้ว');
     btn.reset.onclick = () => askKey('ใส่รหัสผู้ดูแลเพื่อล้างผลโหวตทั้งหมด', 'admin:reset', 'รีเซ็ตแล้ว พร้อมเริ่มใหม่');
 
     socket.on('state', s => {
       renderState(s);
+      btn.start.textContent = `▶ Start (${durationText(s.durationMs)})`;
       btn.start.disabled = s.status !== 'waiting';
       btn.stop.disabled = s.status !== 'open';
     });

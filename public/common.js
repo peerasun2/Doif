@@ -5,7 +5,17 @@ let current = null;
 
 function fmt(ms) {
   const s = Math.max(0, Math.ceil(ms / 1000));
-  return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+  const pad = n => String(n).padStart(2, '0');
+  const h = Math.floor(s / 3600);
+  const mmss = `${pad(Math.floor(s / 60) % 60)}:${pad(s % 60)}`;
+  return h ? `${h}:${mmss}` : mmss;
+}
+
+// e.g. 14400000 -> "4 ชั่วโมง", 300000 -> "5 นาที"
+function durationText(ms) {
+  const m = Math.round(ms / 60000);
+  const h = Math.floor(m / 60), r = m % 60;
+  return [h && `${h} ชั่วโมง`, r && `${r} นาที`].filter(Boolean).join(' ') || '0 นาที';
 }
 
 function renderState(s) {

@@ -7,7 +7,7 @@ const PORT = process.env.PORT || 3000;
 const ADMIN_KEY = (process.env.ADMIN_KEY || 'lamphun').trim();
 const isAdmin = (key) => String(key || '').trim() === ADMIN_KEY;
 const MAX_VOTERS = Number(process.env.MAX_VOTERS || 171);
-const DURATION_MS = Number(process.env.DURATION_SEC || 300) * 1000;
+const DURATION_MS = Number(process.env.DURATION_SEC || 4 * 60 * 60) * 1000;
 
 const app = express();
 const server = http.createServer(app);
