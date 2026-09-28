@@ -1,5 +1,5 @@
 // Shared rendering for the vote page and the admin page.
-const LABELS = { trust: 'ไว้วางใจไปกันต่อ', stop: 'พอแค่นี้' };
+const LABELS = { trust: 'ไว้วางใจไปกันต่อ', stop: 'สุดหล่อพอแค่นี้' };
 let clockOffset = 0;
 let current = null;
 
